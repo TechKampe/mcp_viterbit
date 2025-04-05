@@ -1,0 +1,21 @@
+# Virtual environments
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# Logs and runtime artifacts
+*.log
+*.tmp
+
+# OS metadata
+.DS_Store
+
+# Lock files (optional for pip users)
+uv.lock
+
