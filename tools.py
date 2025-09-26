@@ -372,6 +372,74 @@ class ViterbitTools:
                     },
                     "required": []
                 }
+            ),
+
+            # Candidature Stage History Tools
+            Tool(
+                name="get_candidature_stage_history",
+                description="Get candidature details including complete stages history. Shows all stage transitions with timestamps.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "candidature_id": {
+                            "type": "string",
+                            "description": "The candidature ID to get stage history for"
+                        }
+                    },
+                    "required": ["candidature_id"]
+                }
+            ),
+            Tool(
+                name="get_candidatures_changed_to_stage",
+                description="Find all candidatures that changed to a specific stage (like 'Match') during a given month. Perfect for monthly reporting on stage transitions.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "stage_name": {
+                            "type": "string",
+                            "description": "Name of the stage to filter by (e.g., 'Match', 'Preseleccionado', 'Contratado')"
+                        },
+                        "year": {
+                            "type": "integer",
+                            "description": "Year to filter by (e.g., 2025)",
+                            "minimum": 2020,
+                            "maximum": 2030
+                        },
+                        "month": {
+                            "type": "integer",
+                            "description": "Month to filter by (1-12)",
+                            "minimum": 1,
+                            "maximum": 12
+                        }
+                    },
+                    "required": ["stage_name", "year", "month"]
+                }
+            ),
+            Tool(
+                name="count_candidatures_changed_to_stage",
+                description="Count how many candidatures changed to a specific stage during a given month. Returns just the count number for quick reporting.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "stage_name": {
+                            "type": "string",
+                            "description": "Name of the stage to filter by (e.g., 'Match', 'Preseleccionado', 'Contratado')"
+                        },
+                        "year": {
+                            "type": "integer",
+                            "description": "Year to filter by (e.g., 2025)",
+                            "minimum": 2020,
+                            "maximum": 2030
+                        },
+                        "month": {
+                            "type": "integer",
+                            "description": "Month to filter by (1-12)",
+                            "minimum": 1,
+                            "maximum": 12
+                        }
+                    },
+                    "required": ["stage_name", "year", "month"]
+                }
             )
         ]
 
@@ -657,6 +725,51 @@ class ViterbitTools:
                     "additional_filters": {k: v for k, v in arguments.items() if v is not None and k in ["is_subscriber", "activity_status"]},
                     "candidates": data,
                     "meta": meta
+                }
+
+                return [TextContent(type="text", text=json.dumps(formatted_response, indent=2))]
+
+            elif name == "get_candidature_stage_history":
+                result = await self.client.get_candidature_with_stage_history(str(arguments["candidature_id"]))
+                if result is None:
+                    return [TextContent(type="text", text="Error: Candidature not found or no access")]
+                return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+            elif name == "get_candidatures_changed_to_stage":
+                stage_name = str(arguments["stage_name"])
+                year = int(arguments["year"])
+                month = int(arguments["month"])
+
+                result = await self.client.get_candidatures_changed_to_stage(stage_name, year, month)
+
+                formatted_response = {
+                    "summary": {
+                        "total_found": len(result),
+                        "stage_name": stage_name,
+                        "period": f"{year}-{month:02d}",
+                        "search_criteria": {
+                            "stage_name": stage_name,
+                            "year": year,
+                            "month": month
+                        }
+                    },
+                    "candidatures": result
+                }
+
+                return [TextContent(type="text", text=json.dumps(formatted_response, indent=2))]
+
+            elif name == "count_candidatures_changed_to_stage":
+                stage_name = str(arguments["stage_name"])
+                year = int(arguments["year"])
+                month = int(arguments["month"])
+
+                count = await self.client.count_candidatures_changed_to_stage(stage_name, year, month)
+
+                formatted_response = {
+                    "count": count,
+                    "stage_name": stage_name,
+                    "period": f"{year}-{month:02d}",
+                    "query": f"Candidatures changed to '{stage_name}' in {year}-{month:02d}"
                 }
 
                 return [TextContent(type="text", text=json.dumps(formatted_response, indent=2))]

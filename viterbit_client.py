@@ -517,3 +517,104 @@ class ViterbitClient:
             if field.get("title") == "Usuario en Discord":
                 return field.get("value", "Not found")
         return "Not found"
+
+    async def get_candidature_with_stage_history(self, candidature_id: str) -> Optional[Dict[str, Any]]:
+        """Get candidature details including stages history.
+
+        Args:
+            candidature_id: The candidature ID
+
+        Returns:
+            Candidature data with stages_history or None if not found
+        """
+        try:
+            response = await self._request(
+                "GET",
+                f"candidatures/{candidature_id}",
+                params={"includes[]": ["stages_history"]}
+            )
+            return response.get("data")
+        except ViterbitAPIError:
+            return None
+
+    async def get_candidatures_changed_to_stage(self, stage_name: str, year: int, month: int) -> List[Dict[str, Any]]:
+        """Get candidatures that changed to a specific stage during a given month.
+
+        Args:
+            stage_name: Name of the stage to filter by (e.g., "Match")
+            year: Year to filter by
+            month: Month to filter by (1-12)
+
+        Returns:
+            List of candidatures that changed to the specified stage in the given month
+        """
+        try:
+            # First, get all candidatures (we'll need to paginate through them)
+            all_matching_candidatures = []
+            page = 1
+            page_size = 100
+
+            while True:
+                response = await self._request(
+                    "GET",
+                    "candidatures",
+                    params={
+                        "page": page,
+                        "page_size": page_size,
+                        "includes[]": ["stages_history"]
+                    }
+                )
+
+                candidatures = response.get("data", [])
+                if not candidatures:
+                    break
+
+                # Filter candidatures that changed to the target stage in the given month
+                for candidature in candidatures:
+                    stages_history = candidature.get("stages_history", [])
+                    for stage in stages_history:
+                        if stage.get("stage_name") == stage_name:
+                            start_at = stage.get("start_at")
+                            if start_at:
+                                try:
+                                    # Parse the datetime string
+                                    stage_date = datetime.fromisoformat(start_at.replace('Z', '+00:00'))
+                                    if stage_date.year == year and stage_date.month == month:
+                                        all_matching_candidatures.append({
+                                            "candidature_id": candidature.get("id"),
+                                            "candidate_id": candidature.get("candidate_id"),
+                                            "job_id": candidature.get("job_id"),
+                                            "stage_change_date": start_at,
+                                            "stage_name": stage_name,
+                                            "candidature": candidature
+                                        })
+                                        break  # Only count once per candidature
+                                except (ValueError, TypeError) as e:
+                                    logging.warning(f"Failed to parse date {start_at}: {e}")
+
+                # Check if there are more pages
+                meta = response.get("meta", {})
+                if not meta.get("has_more", False):
+                    break
+
+                page += 1
+
+            return all_matching_candidatures
+
+        except ViterbitAPIError as e:
+            logging.error(f"Error fetching candidatures for stage tracking: {e}")
+            return []
+
+    async def count_candidatures_changed_to_stage(self, stage_name: str, year: int, month: int) -> int:
+        """Count candidatures that changed to a specific stage during a given month.
+
+        Args:
+            stage_name: Name of the stage to filter by (e.g., "Match")
+            year: Year to filter by
+            month: Month to filter by (1-12)
+
+        Returns:
+            Number of candidatures that changed to the specified stage in the given month
+        """
+        matching_candidatures = await self.get_candidatures_changed_to_stage(stage_name, year, month)
+        return len(matching_candidatures)
