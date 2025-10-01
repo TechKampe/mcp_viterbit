@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: viterbit-mcp-server
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m uvicorn server_http:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: VITERBIT_API_KEY
+        sync: false
+      - key: MCP_API_KEYS
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: "*"
+    healthCheckPath: /health
