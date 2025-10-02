@@ -9,12 +9,16 @@ This returns all available tools with their names, descriptions, and parameters.
 
 ## How to Call Tools
 
-Use the callTool operation with this format:
+Use the callTool operation with this exact JSON structure:
 {
   "name": "tool_name",
-  "param1": "value1",
-  "param2": "value2"
+  "arguments": {
+    "param1": "value1",
+    "param2": "value2"
+  }
 }
+
+If a tool does not need parameters, send an empty `arguments` object or omit it entirely.
 
 Tool names can use either snake_case or camelCase - both work.
 

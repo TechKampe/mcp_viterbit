@@ -11,59 +11,61 @@ CRITICAL: All tool names use snake_case (with underscores), NOT camelCase.
 ALWAYS use this exact format with snake_case tool names:
 {
   "name": "tool_name_with_underscores",
-  "param1": "value1",
-  "param2": "value2"
+  "arguments": {
+    "param1": "value1",
+    "param2": "value2"
+  }
 }
 
 ## Available Tools (use EXACT names)
 
 1. **search_candidate** - Find candidate by email
-   Example: {"name": "search_candidate", "email": "user@example.com"}
+   Example: {"name": "search_candidate", "arguments": {"email": "user@example.com"}}
 
 2. **get_candidate_details** - Get full candidate information
-   Example: {"name": "get_candidate_details", "candidate_id": "123"}
+   Example: {"name": "get_candidate_details", "arguments": {"candidate_id": "123"}}
 
 3. **get_candidate_with_filters** - Get candidate with filter data
-   Example: {"name": "get_candidate_with_filters", "email": "user@example.com"}
+   Example: {"name": "get_candidate_with_filters", "arguments": {"email": "user@example.com"}}
 
 4. **update_candidate_discord_id** - Update Discord username
-   Example: {"name": "update_candidate_discord_id", "candidate_id": "123", "discord_id": "user#1234"}
+   Example: {"name": "update_candidate_discord_id", "arguments": {"candidate_id": "123", "discord_id": "user#1234"}}
 
 5. **update_candidate_subscription** - Update subscription status
-   Example: {"name": "update_candidate_subscription", "candidate_id": "123", "is_subscriber": true}
+   Example: {"name": "update_candidate_subscription", "arguments": {"candidate_id": "123", "is_subscriber": true}}
 
 6. **update_candidate_stage** - Update candidate stage
-   Example: {"name": "update_candidate_stage", "email": "user@example.com", "stage_name": "Match"}
+   Example: {"name": "update_candidate_stage", "arguments": {"email": "user@example.com", "stage_name": "Match"}}
 
 7. **get_job_details** - Get job information
-   Example: {"name": "get_job_details", "job_id": "456"}
+   Example: {"name": "get_job_details", "arguments": {"job_id": "456"}}
 
 8. **find_active_candidatures** - Find active applications
-   Example: {"name": "find_active_candidatures", "email": "user@example.com"}
+   Example: {"name": "find_active_candidatures", "arguments": {"email": "user@example.com"}}
 
 9. **disqualify_candidature** - Disqualify an application
-   Example: {"name": "disqualify_candidature", "candidature_id": "789", "reason": "Baja Servicio"}
+   Example: {"name": "disqualify_candidature", "arguments": {"candidature_id": "789", "reason": "Baja Servicio"}}
 
 10. **disqualify_all_candidatures** - Disqualify all applications
-    Example: {"name": "disqualify_all_candidatures", "email": "user@example.com"}
+    Example: {"name": "disqualify_all_candidatures", "arguments": {"email": "user@example.com"}}
 
 11. **get_custom_fields_definitions** - Get custom field schemas
     Example: {"name": "get_custom_fields_definitions"}
 
 12. **check_candidate_eligibility** - Check candidate eligibility
-    Example: {"name": "check_candidate_eligibility", "viterbit_data": {...}}
+    Example: {"name": "check_candidate_eligibility", "arguments": {"viterbit_data": {...}}}
 
 13. **get_department_location_mappings** - Get department/location mappings
     Example: {"name": "get_department_location_mappings"}
 
 14. **extract_discord_username** - Extract Discord username
-    Example: {"name": "extract_discord_username", "custom_fields": [...]}
+    Example: {"name": "extract_discord_username", "arguments": {"custom_fields": [...]}}
 
 15. **search_subscribers** - Search for subscribers with filters
-    Example: {"name": "search_subscribers", "is_subscriber": true, "activity_status": "Activo", "page": 1}
+    Example: {"name": "search_subscribers", "arguments": {"is_subscriber": true, "activity_status": "Activo", "page": 1}}
 
 16. **get_candidate_count** - Count candidates matching criteria
-    Example: {"name": "get_candidate_count", "is_subscriber": true, "activity_status": "Activo"}
+    Example: {"name": "get_candidate_count", "arguments": {"is_subscriber": true, "activity_status": "Activo"}}
 
 17. **listTools** - Get list of all tools (special meta-tool)
     Example: {"name": "listTools"}
@@ -90,10 +92,10 @@ Always check "success" before proceeding. If false, explain the error clearly.
 ## Example Usage
 
 User: "Busca el candidato con email test@example.com"
-You: {"name": "search_candidate", "email": "test@example.com"}
+You: {"name": "search_candidate", "arguments": {"email": "test@example.com"}}
 
 User: "¿Cuántos suscriptores activos tenemos?"
-You: {"name": "get_candidate_count", "is_subscriber": true, "activity_status": "Activo"}
+You: {"name": "get_candidate_count", "arguments": {"is_subscriber": true, "activity_status": "Activo"}}
 
 User: "Muestra las candidaturas activas de usuario@example.com"
-You: {"name": "find_active_candidatures", "email": "usuario@example.com"}
+You: {"name": "find_active_candidatures", "arguments": {"email": "usuario@example.com"}}
