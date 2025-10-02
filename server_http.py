@@ -37,6 +37,9 @@ class ToolCallRequest(BaseModel):
     name: str = Field(..., description="Name of the tool to call")
     arguments: Optional[dict[str, Any]] = Field(default={}, description="Tool arguments")
 
+    class Config:
+        extra = "allow"  # Allow extra fields from ChatGPT
+
 
 class ToolCallResponse(BaseModel):
     """Response model for tool calls."""
@@ -164,24 +167,43 @@ async def list_tools() -> list[dict]:
 
 
 @app.post("/tools/call", dependencies=[Depends(verify_api_key)])
-async def call_tool(request: ToolCallRequest) -> ToolCallResponse:
+async def call_tool(request: Request) -> ToolCallResponse:
     """Execute a tool call."""
     if not viterbit_tools:
         raise HTTPException(status_code=503, detail="Server not initialized")
 
-    logger.info(f"Tool called: {request.name} with arguments: {request.arguments}")
-
+    # Parse request body flexibly to handle different client formats
     try:
-        result = await viterbit_tools.handle_tool_call(request.name, request.arguments)
-        logger.info(f"Tool {request.name} executed successfully")
+        body = await request.json()
+        logger.info(f"Raw request body: {body}")
+
+        # Extract tool name
+        tool_name = body.get("name")
+        if not tool_name:
+            raise HTTPException(status_code=400, detail="Missing 'name' field")
+
+        # Extract arguments - handle multiple possible formats
+        arguments = body.get("arguments", {})
+
+        # If arguments is empty, check if parameters are in the root
+        if not arguments:
+            # Collect all fields except 'name' as arguments
+            arguments = {k: v for k, v in body.items() if k != "name"}
+
+        logger.info(f"Tool called: {tool_name} with arguments: {arguments}")
+
+        result = await viterbit_tools.handle_tool_call(tool_name, arguments)
+        logger.info(f"Tool {tool_name} executed successfully")
 
         return ToolCallResponse(
             success=True,
             result=result
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Error executing tool {request.name}: {e}")
+        logger.error(f"Error executing tool: {e}", exc_info=True)
         return ToolCallResponse(
             success=False,
             result=None,
