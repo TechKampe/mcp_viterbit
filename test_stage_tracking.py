@@ -5,6 +5,11 @@ Test script for candidature stage tracking functionality.
 import asyncio
 import json
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 from viterbit_client import ViterbitClient
 
 async def main():

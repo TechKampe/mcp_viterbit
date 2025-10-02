@@ -2,6 +2,7 @@
 Viterbit API client for MCP server.
 Adapted from the original services/viterbit.py with focus on API operations.
 """
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -549,29 +550,80 @@ class ViterbitClient:
             List of candidatures that changed to the specified stage in the given month
         """
         try:
-            # First, get all candidatures (we'll need to paginate through them)
+            # Use candidatures/search to filter by current stage first
             all_matching_candidatures = []
             page = 1
             page_size = 100
+            candidature_ids = []
 
+            logging.info(f"Searching for candidatures in stage '{stage_name}' for {year}-{month:02d}")
+
+            # Step 1: Get all candidature IDs that are currently in the target stage
             while True:
+                payload = {
+                    "filters": {
+                        "groups": [
+                            {
+                                "operator": "and",
+                                "filters": [
+                                    {
+                                        "field": "current_stage__name",
+                                        "operator": "equals",
+                                        "value": stage_name
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "page": page,
+                    "page_size": page_size,
+                    "search": None
+                }
+
                 response = await self._request(
-                    "GET",
-                    "candidatures",
-                    params={
-                        "page": page,
-                        "page_size": page_size,
-                        "includes[]": ["stages_history"]
-                    }
+                    "POST",
+                    "candidatures/search",
+                    json=payload
                 )
 
                 candidatures = response.get("data", [])
                 if not candidatures:
                     break
 
-                # Filter candidatures that changed to the target stage in the given month
-                for candidature in candidatures:
-                    stages_history = candidature.get("stages_history", [])
+                logging.info(f"Page {page}: Found {len(candidatures)} candidatures in stage '{stage_name}'")
+                candidature_ids.extend([c.get("id") for c in candidatures if c.get("id")])
+
+                # Check if there are more pages
+                meta = response.get("meta", {})
+                if not meta.get("has_more", False):
+                    break
+
+                page += 1
+
+            if not candidature_ids:
+                logging.info(f"No candidatures found in stage '{stage_name}'")
+                return []
+
+            logging.info(f"Total candidatures in '{stage_name}' stage: {len(candidature_ids)}")
+
+            # Step 2: Fetch stage histories in parallel (batch of 10 at a time)
+            batch_size = 10
+            for i in range(0, len(candidature_ids), batch_size):
+                batch = candidature_ids[i:i + batch_size]
+                logging.info(f"Fetching stage history for batch {i//batch_size + 1} ({len(batch)} candidatures)...")
+
+                # Fetch stage histories in parallel for this batch
+                tasks = [self.get_candidature_with_stage_history(cid) for cid in batch]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # Process results
+                for detailed_candidature in results:
+                    if isinstance(detailed_candidature, Exception) or not detailed_candidature:
+                        continue
+
+                    stages_history = detailed_candidature.get("stages_history", [])
+
+                    # Find when this candidature changed to the target stage
                     for stage in stages_history:
                         if stage.get("stage_name") == stage_name:
                             start_at = stage.get("start_at")
@@ -581,24 +633,18 @@ class ViterbitClient:
                                     stage_date = datetime.fromisoformat(start_at.replace('Z', '+00:00'))
                                     if stage_date.year == year and stage_date.month == month:
                                         all_matching_candidatures.append({
-                                            "candidature_id": candidature.get("id"),
-                                            "candidate_id": candidature.get("candidate_id"),
-                                            "job_id": candidature.get("job_id"),
+                                            "candidature_id": detailed_candidature.get("id"),
+                                            "candidate_id": detailed_candidature.get("candidate_id"),
+                                            "job_id": detailed_candidature.get("job_id"),
                                             "stage_change_date": start_at,
                                             "stage_name": stage_name,
-                                            "candidature": candidature
+                                            "candidature": detailed_candidature
                                         })
                                         break  # Only count once per candidature
                                 except (ValueError, TypeError) as e:
                                     logging.warning(f"Failed to parse date {start_at}: {e}")
 
-                # Check if there are more pages
-                meta = response.get("meta", {})
-                if not meta.get("has_more", False):
-                    break
-
-                page += 1
-
+            logging.info(f"Total candidatures changed to '{stage_name}' in {year}-{month:02d}: {len(all_matching_candidatures)}")
             return all_matching_candidatures
 
         except ViterbitAPIError as e:
