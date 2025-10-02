@@ -195,19 +195,40 @@ async def call_tool(request: Request) -> ToolCallResponse:
         result = await viterbit_tools.handle_tool_call(tool_name, arguments)
         logger.info(f"Tool {tool_name} executed successfully")
 
+        # Extract text content from MCP response format
+        # MCP returns List[TextContent], we need to extract the actual data
+        response_data = []
+        if result and isinstance(result, list):
+            for item in result:
+                if hasattr(item, 'text'):
+                    try:
+                        # Try to parse as JSON for structured data
+                        response_data.append(json.loads(item.text))
+                    except (json.JSONDecodeError, AttributeError):
+                        # If not JSON, return as string
+                        response_data.append(item.text if hasattr(item, 'text') else str(item))
+
+        # Return single item if only one, otherwise return array
+        final_result = response_data[0] if len(response_data) == 1 else response_data
+
         return ToolCallResponse(
             success=True,
-            result=result
+            result=final_result
         )
 
     except HTTPException:
         raise
+    except KeyError as e:
+        logger.error(f"Missing required parameter: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing required parameter: {e}"
+        )
     except Exception as e:
         logger.error(f"Error executing tool: {e}", exc_info=True)
-        return ToolCallResponse(
-            success=False,
-            result=None,
-            error=str(e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Tool execution failed: {str(e)}"
         )
 
 
