@@ -43,8 +43,10 @@ class ToolCallRequest(BaseModel):
 
 class ToolCallResponse(BaseModel):
     """Response model for tool calls."""
+    model_config = {"extra": "allow"}  # Pydantic v2 syntax
+
     success: bool
-    result: Any
+    result: Any = None
     error: Optional[str] = None
 
 
@@ -167,7 +169,7 @@ async def list_tools() -> list[dict]:
 
 
 @app.post("/tools/call", dependencies=[Depends(verify_api_key)])
-async def call_tool(request: Request) -> ToolCallResponse:
+async def call_tool(request: Request):
     """Execute a tool call."""
     if not viterbit_tools:
         raise HTTPException(status_code=503, detail="Server not initialized")
@@ -210,10 +212,10 @@ async def call_tool(request: Request) -> ToolCallResponse:
                 }
                 for tool in tools
             ]
-            return ToolCallResponse(
-                success=True,
-                result={"tools": tools_list, "count": len(tools_list)}
-            )
+            return {
+                "success": True,
+                "result": {"tools": tools_list, "count": len(tools_list)}
+            }
 
         # Extract arguments - handle multiple possible formats
         arguments = body.get("arguments", {})
@@ -244,10 +246,10 @@ async def call_tool(request: Request) -> ToolCallResponse:
         # Return single item if only one, otherwise return array
         final_result = response_data[0] if len(response_data) == 1 else response_data
 
-        return ToolCallResponse(
-            success=True,
-            result=final_result
-        )
+        return {
+            "success": True,
+            "result": final_result
+        }
 
     except HTTPException:
         raise
