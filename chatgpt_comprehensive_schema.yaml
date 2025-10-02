@@ -116,6 +116,19 @@ paths:
                       type: string
                       enum: ["Sí", "No"]
                       description: Experiencia
+                    # Parámetros de ubicación
+                    city:
+                      type: string
+                      description: Ciudad del candidato (ej. Barcelona, Madrid)
+                    state:
+                      type: string
+                      description: Provincia/región del candidato
+                    zona:
+                      type: string
+                      description: Zona geográfica
+                    provincia:
+                      type: string
+                      description: Provincia específica
                     # Paginación
                     page:
                       type: integer
