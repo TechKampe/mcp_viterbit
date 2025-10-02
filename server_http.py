@@ -182,6 +182,23 @@ async def call_tool(request: Request) -> ToolCallResponse:
         if not tool_name:
             raise HTTPException(status_code=400, detail="Missing 'name' field")
 
+        # Special case: if tool is "listTools", return the tools list
+        if tool_name == "listTools" or tool_name == "list_tools":
+            logger.info("Returning tools list via callTool endpoint")
+            tools = viterbit_tools.get_tools()
+            tools_list = [
+                {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "inputSchema": tool.inputSchema
+                }
+                for tool in tools
+            ]
+            return ToolCallResponse(
+                success=True,
+                result={"tools": tools_list, "count": len(tools_list)}
+            )
+
         # Extract arguments - handle multiple possible formats
         arguments = body.get("arguments", {})
 
