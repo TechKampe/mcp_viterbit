@@ -130,9 +130,12 @@ paths:
                     custom_fields:
                       type: array
                       description: Array de campos personalizados
+                      items:
+                        type: object
                     viterbit_data:
                       type: object
                       description: Datos completos del candidato
+                      additionalProperties: true
       responses:
         "200":
           description: Respuesta exitosa
