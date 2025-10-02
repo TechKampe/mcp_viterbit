@@ -1,0 +1,157 @@
+openapi: 3.1.0
+info:
+  title: Viterbit MCP Server
+  version: 1.0.0
+  description: Servidor MCP para gestión de candidatos y reclutamiento en Viterbit
+servers:
+  - url: https://mcp-viterbit.onrender.com
+
+paths:
+  /tools:
+    get:
+      operationId: listTools
+      summary: Listar todas las herramientas disponibles
+      description: Obtiene la lista completa de herramientas MCP con sus esquemas
+      responses:
+        "200":
+          description: Lista de herramientas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    inputSchema:
+                      type: object
+
+  /tools/call:
+    post:
+      operationId: callTool
+      summary: Ejecutar una herramienta MCP
+      description: Llama a cualquier herramienta disponible con sus argumentos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, arguments]
+              properties:
+                name:
+                  type: string
+                  description: Nombre de la herramienta (usar snake_case)
+                  enum:
+                    - search_candidate
+                    - get_candidate_details
+                    - get_candidate_with_filters
+                    - update_candidate_discord_id
+                    - update_candidate_subscription
+                    - update_candidate_stage
+                    - get_job_details
+                    - find_active_candidatures
+                    - disqualify_candidature
+                    - disqualify_all_candidatures
+                    - get_custom_fields_definitions
+                    - check_candidate_eligibility
+                    - get_department_location_mappings
+                    - extract_discord_username
+                    - search_subscribers
+                    - get_candidate_count
+                    - listTools
+                arguments:
+                  type: object
+                  description: Argumentos específicos de cada herramienta
+                  additionalProperties: true
+                  properties:
+                    # Parámetros comunes
+                    email:
+                      type: string
+                      format: email
+                      description: Email del candidato
+                    candidate_id:
+                      type: string
+                      description: ID del candidato en Viterbit
+                    candidature_id:
+                      type: string
+                      description: ID de la candidatura
+                    job_id:
+                      type: string
+                      description: ID del trabajo/oferta
+                    # Parámetros de actualización
+                    discord_id:
+                      type: string
+                      description: Username de Discord
+                    is_subscriber:
+                      type: boolean
+                      description: Estado de suscripción
+                    stage_name:
+                      type: string
+                      description: Nombre de la etapa
+                    reason:
+                      type: string
+                      description: Razón de descalificación
+                    # Parámetros de búsqueda/filtrado
+                    activity_status:
+                      type: string
+                      enum: [Activo, Inactivo]
+                      description: Estado de actividad
+                    coach:
+                      type: string
+                      enum: [Alexia, Irene, Irina]
+                      description: Coach asignado
+                    has_driving_license:
+                      type: string
+                      enum: ["Sí", "No", "Me lo estoy sacando"]
+                      description: Permiso de conducir
+                    national_mobility:
+                      type: string
+                      enum: ["Sí", "No", "Puedo desplazarme pero no dormir fuera de casa"]
+                      description: Movilidad nacional
+                    has_experience:
+                      type: string
+                      enum: ["Sí", "No"]
+                      description: Experiencia
+                    # Paginación
+                    page:
+                      type: integer
+                      minimum: 1
+                      description: Número de página
+                    page_size:
+                      type: integer
+                      minimum: 1
+                      maximum: 100
+                      description: Resultados por página
+                    # Objetos complejos
+                    custom_fields:
+                      type: array
+                      description: Array de campos personalizados
+                    viterbit_data:
+                      type: object
+                      description: Datos completos del candidato
+      responses:
+        "200":
+          description: Respuesta exitosa
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: Indica si la operación fue exitosa
+                  result:
+                    description: Resultado de la herramienta
+                  error:
+                    type: string
+                    description: Mensaje de error si hubo fallo
+        "400":
+          description: Parámetros incorrectos
+        "401":
+          description: No autorizado
+        "500":
+          description: Error del servidor
