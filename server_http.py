@@ -182,8 +182,24 @@ async def call_tool(request: Request) -> ToolCallResponse:
         if not tool_name:
             raise HTTPException(status_code=400, detail="Missing 'name' field")
 
+        # Convert camelCase to snake_case for compatibility with ChatGPT
+        # ChatGPT often sends camelCase, but our tools use snake_case
+        import re
+        def camel_to_snake(name: str) -> str:
+            """Convert camelCase to snake_case."""
+            s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+            return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+        original_tool_name = tool_name
+        tool_name_snake = camel_to_snake(tool_name)
+
+        # Use snake_case version if it's different
+        if tool_name != tool_name_snake:
+            logger.info(f"Converting tool name from '{original_tool_name}' to '{tool_name_snake}'")
+            tool_name = tool_name_snake
+
         # Special case: if tool is "listTools", return the tools list
-        if tool_name == "listTools" or tool_name == "list_tools":
+        if tool_name == "list_tools" or original_tool_name == "listTools":
             logger.info("Returning tools list via callTool endpoint")
             tools = viterbit_tools.get_tools()
             tools_list = [
