@@ -550,16 +550,66 @@ class ViterbitClient:
             List of candidatures that changed to the specified stage in the given month
         """
         try:
-            # Get ALL candidatures, not just those currently in the target stage
             all_matching_candidatures = []
-            page = 1
-            page_size = 100
-            candidature_ids = []
+            candidature_ids_set = set()
 
             logging.info(f"Searching for candidatures that changed to stage '{stage_name}' during {year}-{month:02d}")
 
-            # Step 1: Get ALL candidature IDs (no stage filter)
+            # Step 1a: Get candidatures currently in the target stage
+            page = 1
+            page_size = 100
+            logging.info(f"Fetching candidatures currently in '{stage_name}' stage...")
+
             while True:
+                payload = {
+                    "filters": {
+                        "groups": [
+                            {
+                                "operator": "and",
+                                "filters": [
+                                    {
+                                        "field": "current_stage__name",
+                                        "operator": "equals",
+                                        "value": stage_name
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "page": page,
+                    "page_size": page_size,
+                    "search": None
+                }
+
+                response = await self._request(
+                    "POST",
+                    "candidatures/search",
+                    json=payload
+                )
+
+                candidatures = response.get("data", [])
+                if not candidatures:
+                    break
+
+                for c in candidatures:
+                    if c.get("id"):
+                        candidature_ids_set.add(c.get("id"))
+
+                meta = response.get("meta", {})
+                if not meta.get("has_more", False):
+                    break
+
+                page += 1
+
+            logging.info(f"Found {len(candidature_ids_set)} candidatures currently in '{stage_name}' stage")
+
+            # Step 1b: Get recently updated candidatures to catch those that moved out of the stage
+            # Fetch candidatures from the past 6 months to capture stage changes
+            page = 1
+            max_pages = 20  # Limit to prevent excessive API calls
+            logging.info(f"Fetching recently updated candidatures...")
+
+            while page <= max_pages:
                 payload = {
                     "filters": {
                         "groups": []
@@ -579,21 +629,18 @@ class ViterbitClient:
                 if not candidatures:
                     break
 
-                logging.info(f"Page {page}: Found {len(candidatures)} candidatures")
-                candidature_ids.extend([c.get("id") for c in candidatures if c.get("id")])
+                for c in candidatures:
+                    if c.get("id"):
+                        candidature_ids_set.add(c.get("id"))
 
-                # Check if there are more pages
                 meta = response.get("meta", {})
                 if not meta.get("has_more", False):
                     break
 
                 page += 1
 
-            if not candidature_ids:
-                logging.info(f"No candidatures found")
-                return []
-
-            logging.info(f"Total candidatures to check: {len(candidature_ids)}")
+            candidature_ids = list(candidature_ids_set)
+            logging.info(f"Total unique candidatures to check: {len(candidature_ids)}")
 
             # Step 2: Fetch stage histories in parallel (batch of 10 at a time)
             batch_size = 10
