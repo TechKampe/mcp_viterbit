@@ -550,30 +550,19 @@ class ViterbitClient:
             List of candidatures that changed to the specified stage in the given month
         """
         try:
-            # Use candidatures/search to filter by current stage first
+            # Get ALL candidatures, not just those currently in the target stage
             all_matching_candidatures = []
             page = 1
             page_size = 100
             candidature_ids = []
 
-            logging.info(f"Searching for candidatures in stage '{stage_name}' for {year}-{month:02d}")
+            logging.info(f"Searching for candidatures that changed to stage '{stage_name}' during {year}-{month:02d}")
 
-            # Step 1: Get all candidature IDs that are currently in the target stage
+            # Step 1: Get ALL candidature IDs (no stage filter)
             while True:
                 payload = {
                     "filters": {
-                        "groups": [
-                            {
-                                "operator": "and",
-                                "filters": [
-                                    {
-                                        "field": "current_stage__name",
-                                        "operator": "equals",
-                                        "value": stage_name
-                                    }
-                                ]
-                            }
-                        ]
+                        "groups": []
                     },
                     "page": page,
                     "page_size": page_size,
@@ -590,7 +579,7 @@ class ViterbitClient:
                 if not candidatures:
                     break
 
-                logging.info(f"Page {page}: Found {len(candidatures)} candidatures in stage '{stage_name}'")
+                logging.info(f"Page {page}: Found {len(candidatures)} candidatures")
                 candidature_ids.extend([c.get("id") for c in candidatures if c.get("id")])
 
                 # Check if there are more pages
@@ -601,10 +590,10 @@ class ViterbitClient:
                 page += 1
 
             if not candidature_ids:
-                logging.info(f"No candidatures found in stage '{stage_name}'")
+                logging.info(f"No candidatures found")
                 return []
 
-            logging.info(f"Total candidatures in '{stage_name}' stage: {len(candidature_ids)}")
+            logging.info(f"Total candidatures to check: {len(candidature_ids)}")
 
             # Step 2: Fetch stage histories in parallel (batch of 10 at a time)
             batch_size = 10
