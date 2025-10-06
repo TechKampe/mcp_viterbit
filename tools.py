@@ -67,61 +67,6 @@ class ViterbitTools:
                     "required": ["email"]
                 }
             ),
-            Tool(
-                name="update_candidate_discord_id",
-                description="Update a candidate's Discord username/ID in their custom fields.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "candidate_id": {
-                            "type": "string",
-                            "description": "The Viterbit candidate ID"
-                        },
-                        "discord_id": {
-                            "type": "string",
-                            "description": "Discord username or ID to set for the candidate"
-                        }
-                    },
-                    "required": ["candidate_id", "discord_id"]
-                }
-            ),
-            Tool(
-                name="update_candidate_subscription",
-                description="Update a candidate's subscription status (subscriber or non-subscriber).",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "candidate_id": {
-                            "type": "string",
-                            "description": "The Viterbit candidate ID"
-                        },
-                        "is_subscriber": {
-                            "type": "boolean",
-                            "description": "Whether the candidate should be marked as a subscriber",
-                            "default": True
-                        }
-                    },
-                    "required": ["candidate_id"]
-                }
-            ),
-            Tool(
-                name="update_candidate_stage",
-                description="Update a candidate's stage name and date. Sets the stage and current date in their custom fields.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "email": {
-                            "type": "string",
-                            "description": "Email address of the candidate"
-                        },
-                        "stage_name": {
-                            "type": "string",
-                            "description": "Stage name to set (e.g., 'Match', 'Contratado', 'Preseleccionado')"
-                        }
-                    },
-                    "required": ["email", "stage_name"]
-                }
-            ),
 
             # Job Management Tools
             Tool(
@@ -149,39 +94,6 @@ class ViterbitTools:
                         "email": {
                             "type": "string",
                             "description": "Email address of the candidate"
-                        }
-                    },
-                    "required": ["email"]
-                }
-            ),
-            Tool(
-                name="disqualify_candidature",
-                description="Disqualify a specific job application (candidature) with a reason.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "candidature_id": {
-                            "type": "string",
-                            "description": "The candidature ID to disqualify"
-                        },
-                        "reason": {
-                            "type": "string",
-                            "description": "Reason for disqualification",
-                            "default": "Baja Servicio"
-                        }
-                    },
-                    "required": ["candidature_id"]
-                }
-            ),
-            Tool(
-                name="disqualify_all_candidatures",
-                description="Disqualify ALL active job applications for a candidate by their email address. Use with caution as this affects all active applications.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "email": {
-                            "type": "string",
-                            "description": "Email address of the candidate whose applications should be disqualified"
                         }
                     },
                     "required": ["email"]
@@ -504,48 +416,12 @@ class ViterbitTools:
                 result = await self.client.get_candidate_with_viterbit_fields(str(arguments["email"]))
                 return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
-            elif name == "update_candidate_discord_id":
-                await self.client.update_candidate_discord_id(
-                    str(arguments["candidate_id"]),
-                    str(arguments["discord_id"])
-                )
-                return [TextContent(type="text", text="Discord ID updated successfully")]
-
-            elif name == "update_candidate_subscription":
-                is_subscriber = arguments.get("is_subscriber", True)
-                await self.client.update_candidate_subscription_status(
-                    str(arguments["candidate_id"]),
-                    bool(is_subscriber)
-                )
-                status = "subscriber" if is_subscriber else "non-subscriber"
-                return [TextContent(type="text", text=f"Candidate subscription status updated to: {status}")]
-
-            elif name == "update_candidate_stage":
-                await self.client.update_candidate_stage_fields(
-                    str(arguments["email"]),
-                    str(arguments["stage_name"])
-                )
-                return [TextContent(type="text", text=f"Candidate stage updated to: {arguments['stage_name']}")]
-
             elif name == "get_job_details":
                 result = await self.client.get_job_details(str(arguments["job_id"]))
                 return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
             elif name == "find_active_candidatures":
                 result = await self.client.find_active_candidatures_by_email(str(arguments["email"]))
-                return [TextContent(type="text", text=json.dumps(result, indent=2))]
-
-            elif name == "disqualify_candidature":
-                reason = str(arguments.get("reason", "Baja Servicio"))
-                success = await self.client.disqualify_candidature(
-                    str(arguments["candidature_id"]),
-                    reason
-                )
-                status = "successfully disqualified" if success else "failed to disqualify"
-                return [TextContent(type="text", text=f"Candidature {status} with reason: {reason}")]
-
-            elif name == "disqualify_all_candidatures":
-                result = await self.client.disqualify_active_candidatures_by_email(str(arguments["email"]))
                 return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
             elif name == "get_custom_fields_definitions":
