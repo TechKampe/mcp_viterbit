@@ -664,3 +664,56 @@ class ViterbitClient:
         """
         matching_candidatures = await self.get_candidatures_changed_to_stage(stage_name, year, month)
         return len(matching_candidatures)
+
+    async def get_candidatures_in_current_stage(self, stage_name: str, page: int = 1, page_size: int = 50) -> Optional[Dict[str, Any]]:
+        """Get all candidatures currently in a specific stage.
+
+        Args:
+            stage_name: Name of the stage to filter by (e.g., "Match")
+            page: Page number (default: 1)
+            page_size: Number of results per page (default: 50, max: 100)
+
+        Returns:
+            Dict with candidatures data and metadata, or None if error
+        """
+        try:
+            payload = {
+                "filters": {
+                    "groups": [
+                        {
+                            "operator": "and",
+                            "filters": [
+                                {
+                                    "field": "current_stage__name",
+                                    "operator": "equals",
+                                    "value": stage_name
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "page": page,
+                "page_size": min(page_size, 100),
+                "search": None
+            }
+
+            response = await self._request("POST", "candidatures/search", json=payload)
+            return response
+        except ViterbitAPIError as e:
+            logging.error(f"Error fetching candidatures in current stage: {e}")
+            return None
+
+    async def count_candidatures_in_current_stage(self, stage_name: str) -> int:
+        """Count candidatures currently in a specific stage.
+
+        Args:
+            stage_name: Name of the stage to filter by (e.g., "Match")
+
+        Returns:
+            Number of candidatures currently in the specified stage
+        """
+        result = await self.get_candidatures_in_current_stage(stage_name, page=1, page_size=1)
+        if result:
+            meta = result.get("meta", {})
+            return meta.get("total", 0)
+        return 0

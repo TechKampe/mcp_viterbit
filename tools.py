@@ -440,6 +440,44 @@ class ViterbitTools:
                     },
                     "required": ["stage_name", "year", "month"]
                 }
+            ),
+            Tool(
+                name="get_candidatures_in_current_stage",
+                description="Get all candidatures currently in a specific stage right now. Returns detailed candidature information for candidates in the specified stage at this moment.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "stage_name": {
+                            "type": "string",
+                            "description": "Name of the stage to filter by (e.g., 'Match', 'Preseleccionado', 'Contratado')"
+                        },
+                        "page": {
+                            "type": "number",
+                            "description": "Page number for pagination",
+                            "default": 1
+                        },
+                        "page_size": {
+                            "type": "number",
+                            "description": "Number of results per page (max 100)",
+                            "default": 50
+                        }
+                    },
+                    "required": ["stage_name"]
+                }
+            ),
+            Tool(
+                name="count_candidatures_in_current_stage",
+                description="Count how many candidatures are currently in a specific stage right now. Returns just the count number for quick reporting about current stage status.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "stage_name": {
+                            "type": "string",
+                            "description": "Name of the stage to filter by (e.g., 'Match', 'Preseleccionado', 'Contratado')"
+                        }
+                    },
+                    "required": ["stage_name"]
+                }
             )
         ]
 
@@ -770,6 +808,48 @@ class ViterbitTools:
                     "stage_name": stage_name,
                     "period": f"{year}-{month:02d}",
                     "query": f"Candidatures changed to '{stage_name}' in {year}-{month:02d}"
+                }
+
+                return [TextContent(type="text", text=json.dumps(formatted_response, indent=2))]
+
+            elif name == "get_candidatures_in_current_stage":
+                stage_name = str(arguments["stage_name"])
+                page = arguments.get("page", 1)
+                page_size = arguments.get("page_size", 50)
+
+                result = await self.client.get_candidatures_in_current_stage(stage_name, page, page_size)
+
+                if result is None:
+                    return [TextContent(type="text", text="Error: Failed to get candidatures in current stage")]
+
+                meta = result.get("meta", {})
+                data = result.get("data", [])
+
+                formatted_response = {
+                    "summary": {
+                        "total_in_stage": meta.get("total", 0),
+                        "showing": len(data),
+                        "page": meta.get("page", 1),
+                        "total_pages": meta.get("total_pages", 0),
+                        "has_more": meta.get("has_more", False)
+                    },
+                    "stage_name": stage_name,
+                    "query": f"Candidatures currently in '{stage_name}' stage",
+                    "candidatures": data,
+                    "meta": meta
+                }
+
+                return [TextContent(type="text", text=json.dumps(formatted_response, indent=2))]
+
+            elif name == "count_candidatures_in_current_stage":
+                stage_name = str(arguments["stage_name"])
+
+                count = await self.client.count_candidatures_in_current_stage(stage_name)
+
+                formatted_response = {
+                    "count": count,
+                    "stage_name": stage_name,
+                    "query": f"Candidatures currently in '{stage_name}' stage"
                 }
 
                 return [TextContent(type="text", text=json.dumps(formatted_response, indent=2))]
