@@ -603,41 +603,58 @@ class ViterbitClient:
 
             logging.info(f"Found {len(candidature_ids_set)} candidatures currently in '{stage_name}' stage")
 
-            # Step 1b: Get recently updated candidatures to catch those that moved out of the stage
-            # Fetch candidatures from the past 6 months to capture stage changes
-            page = 1
-            max_pages = 20  # Limit to prevent excessive API calls
-            logging.info(f"Fetching recently updated candidatures...")
+            # Step 1b: Also check candidatures that have moved past the target stage
+            # Search for candidatures with the stage in their history by checking various current stages
+            max_pages_per_stage = 5  # Limit per stage to prevent excessive API calls
+            other_common_stages = ["Preseleccionado", "Contratado", "Descartado", "En Proceso"]
 
-            while page <= max_pages:
-                payload = {
-                    "filters": {
-                        "groups": []
-                    },
-                    "page": page,
-                    "page_size": page_size,
-                    "search": None
-                }
+            logging.info(f"Fetching candidatures from other stages that may have passed through '{stage_name}'...")
 
-                response = await self._request(
-                    "POST",
-                    "candidatures/search",
-                    json=payload
-                )
+            for other_stage in other_common_stages:
+                if other_stage == stage_name:
+                    continue
 
-                candidatures = response.get("data", [])
-                if not candidatures:
-                    break
+                page = 1
+                while page <= max_pages_per_stage:
+                    payload = {
+                        "filters": {
+                            "groups": [
+                                {
+                                    "operator": "and",
+                                    "filters": [
+                                        {
+                                            "field": "current_stage__name",
+                                            "operator": "equals",
+                                            "value": other_stage
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        "page": page,
+                        "page_size": page_size,
+                        "search": None
+                    }
 
-                for c in candidatures:
-                    if c.get("id"):
-                        candidature_ids_set.add(c.get("id"))
+                    response = await self._request(
+                        "POST",
+                        "candidatures/search",
+                        json=payload
+                    )
 
-                meta = response.get("meta", {})
-                if not meta.get("has_more", False):
-                    break
+                    candidatures = response.get("data", [])
+                    if not candidatures:
+                        break
 
-                page += 1
+                    for c in candidatures:
+                        if c.get("id"):
+                            candidature_ids_set.add(c.get("id"))
+
+                    meta = response.get("meta", {})
+                    if not meta.get("has_more", False):
+                        break
+
+                    page += 1
 
             candidature_ids = list(candidature_ids_set)
             logging.info(f"Total unique candidatures to check: {len(candidature_ids)}")
