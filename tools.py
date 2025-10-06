@@ -27,16 +27,16 @@ class ViterbitTools:
             # Candidate Management Tools
             Tool(
                 name="search_candidate",
-                description="Search for a candidate by email address. Returns basic candidate information including ID, name, email, and phone.",
+                description="Search for a candidate by name, email address, or phone number. Returns basic candidate information including ID, name, email, and phone.",
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "email": {
+                        "search_term": {
                             "type": "string",
-                            "description": "Email address of the candidate to search for"
+                            "description": "Candidate name, email address, or phone number to search for"
                         }
                     },
-                    "required": ["email"]
+                    "required": ["search_term"]
                 }
             ),
             Tool(
@@ -455,7 +455,7 @@ class ViterbitTools:
         """
         try:
             if name == "search_candidate":
-                result = await self.client.search_candidate_by_email(str(arguments["email"]))
+                result = await self.client.search_candidate(str(arguments["search_term"]))
                 return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
             elif name == "get_candidate_details":

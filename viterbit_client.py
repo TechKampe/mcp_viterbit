@@ -93,17 +93,17 @@ class ViterbitClient:
         except ViterbitAPIError:
             return None
 
-    async def search_candidate_by_email(self, email: str) -> Optional[Dict[str, Any]]:
-        """Search for a candidate by their email address.
+    async def search_candidate(self, search_term: str) -> Optional[Dict[str, Any]]:
+        """Search for a candidate by name, email, or phone number.
 
         Args:
-            email: Candidate email address
+            search_term: Candidate name, email address, or phone number
 
         Returns:
             Candidate basic info or None if not found
         """
         try:
-            response = await self._request("POST", "candidates/search", json={"search": email})
+            response = await self._request("POST", "candidates/search", json={"search": search_term})
             candidates = response.get("data", [])
             if candidates:
                 candidate_data = candidates[0]
@@ -126,7 +126,7 @@ class ViterbitClient:
         Returns:
             Candidate ID or None if not found
         """
-        candidate = await self.search_candidate_by_email(email)
+        candidate = await self.search_candidate(email)
         return candidate["id"] if candidate else None
 
     async def get_candidate_with_viterbit_fields(self, email: str) -> Optional[Dict[str, Any]]:
